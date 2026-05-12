@@ -19,7 +19,7 @@
           ...
         }:
         let
-          mkPulseVisualizer = pkgs.stdenv.mkDerivation {
+          mkPulseVisualizer = pkgs.clangStdenv.mkDerivation {
             pname = "pulse-visualizer";
             version = "1.3.9";
             src = ./.;
@@ -28,7 +28,6 @@
               pkgs.cmake
               pkgs.ninja
               pkgs.pkg-config
-              pkgs.clang
             ];
 
             buildInputs = [
@@ -54,13 +53,6 @@
                 --replace-fail "-Wl,-s" "" \
                 --replace-fail " -s" ""
             '';
-
-            cmakeFlags = [
-              "-G Ninja"
-              "-DCMAKE_CXX_COMPILER=clang++"
-              "-DCMAKE_C_COMPILER=clang"
-              "-DCMAKE_BUILD_TYPE=Release"
-            ];
 
             meta = {
               description = "Real-time audio visualizer inspired by MiniMeters";
