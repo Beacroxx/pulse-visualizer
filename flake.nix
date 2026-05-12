@@ -20,50 +20,24 @@
           ...
         }:
         let
-          mkPulseVisualizer = pkgs.clangStdenv.mkDerivation {
-            pname = "pulse-visualizer";
-            version = "1.3.9";
-            src = ./.;
-
-            nativeBuildInputs = [
-              pkgs.cmake
-              pkgs.ninja
-              pkgs.pkg-config
-            ];
-
-            buildInputs = [
-              pkgs.curl
-              pkgs.fftwFloat
-              pkgs.freetype
-              pkgs.libebur128
-              pkgs.libGL
-              pkgs.libpulseaudio
-              pkgs.pipewire
-              pkgs.sdl3
-              pkgs.sdl3-image
-              pkgs.yaml-cpp
-            ];
-
-            strictDeps = true;
-            enableParallelBuilding = true;
-
-            meta = {
-              description = "Real-time audio visualizer inspired by MiniMeters";
-              homepage = "https://github.com/Audio-Solutions/pulse-visualizer";
-              license = lib.licenses.gpl3;
-              maintainers = with lib.maintainers; [ miyu ];
-              platforms = lib.platforms.linux;
-              badPlatforms = lib.platforms.darwin;
-              mainProgram = "pulse-visualizer";
-            };
-          };
+          # https://discourse.nixos.org/t/passing-git-commit-hash-and-tag-to-build-with-flakes/11355/2
+          versionRev = if (self ? rev) then (builtins.substring 0 7 self.rev) else "dirty";
+          # TODO: Set version prefix only once somewhere, and read that here
+          # and in ./CMakeLists.txt
+          version = "1.3.9-${versionRev}-flake";
         in
         {
-          packages.default = mkPulseVisualizer;
-          packages.pulse-visualizer = mkPulseVisualizer;
+          packages.default = pkgs.callPackage ./package.nix {
+            inherit version;
+            src = ./.;
+          };
+          packages.pulse-visualizer = self'.packages.default;
+          packages.pulse-visualizer-with-clang = self'.packages.default.override {
+            stdenv = pkgs.clangStdenv;
+          };
 
           devShells.default = pkgs.mkShell {
-            inputsFrom = [ mkPulseVisualizer ];
+            inputsFrom = [ self'.packages.default ];
           };
 
           apps.default = {
