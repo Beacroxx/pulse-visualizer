@@ -31,16 +31,16 @@
             ];
 
             buildInputs = [
-              pkgs.sdl3
-              pkgs.sdl3-image
-              pkgs.libpulseaudio
-              pkgs.pipewire
+              pkgs.curl
               pkgs.fftwFloat
               pkgs.freetype
-              pkgs.libGL
-              pkgs.curl
-              pkgs.yaml-cpp
               pkgs.libebur128
+              pkgs.libGL
+              pkgs.libpulseaudio
+              pkgs.pipewire
+              pkgs.sdl3
+              pkgs.sdl3-image
+              pkgs.yaml-cpp
             ];
 
             strictDeps = true;
