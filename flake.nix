@@ -61,6 +61,7 @@
               maintainers = with lib.maintainers; [ miyu ];
               platforms = lib.platforms.linux;
               badPlatforms = lib.platforms.darwin;
+              mainProgram = "pulse-visualizer";
             };
           };
         in
@@ -74,7 +75,7 @@
 
           apps.default = {
             type = "app";
-            program = "${self'.packages.default}/bin/pulse-visualizer";
+            program = pkgs.lib.getExe self'.packages.default;
           };
         };
 
