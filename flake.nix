@@ -4,9 +4,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-compat.url = "github:NixOS/flake-compat";
+    gitignore = {
+      url = "github:hercules-ci/gitignore.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs =
-    inputs@{ flake-parts, self, ... }:
+    inputs@{ flake-parts, gitignore, self, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -25,11 +29,38 @@
           # TODO: Set version prefix only once somewhere, and read that here
           # and in ./CMakeLists.txt
           version = "1.3.9-${versionRev}-flake";
+          inherit (gitignore.lib) gitignoreSource;
         in
         {
           packages.default = pkgs.callPackage ./package.nix {
             inherit version;
-            src = ./.;
+            src = lib.cleanSourceWith {
+              # Ignore many files that gitignoreSource doesn't ignore, see:
+              # https://github.com/hercules-ci/gitignore.nix/issues/9#issuecomment-635458762
+              filter = path: type:
+                let
+                  rel = lib.removePrefix (toString ./. + "/") (toString path);
+                in
+                !(builtins.elem rel [
+                  # Nix files
+                  "flake.nix"
+                  "flake.lock"
+                  "default.nix"
+                  "shell.nix"
+                  "package.nix"
+                  # vcpkg Microsoft files
+                  "vcpkg.json"
+                  "vcpkg-configuration.json"
+                  # Git files
+                  ".github"
+                  ".git"
+                  # Other files that shouldn't affect Nix build
+                  "pkg/install.sh"
+                  "pkg/uninstall.sh"
+                  ".clang-format"
+                ]);
+              src = gitignoreSource ./.;
+            };
           };
           packages.pulse-visualizer = self'.packages.default;
           packages.pulse-visualizer-with-clang = self'.packages.default.override {
