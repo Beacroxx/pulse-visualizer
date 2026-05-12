@@ -3,6 +3,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-compat.url = "github:NixOS/flake-compat";
   };
   outputs =
     inputs@{ flake-parts, self, ... }:
