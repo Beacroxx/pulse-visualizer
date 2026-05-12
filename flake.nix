@@ -46,14 +46,6 @@
             strictDeps = true;
             enableParallelBuilding = true;
 
-            postPatch = ''
-              substituteInPlace CMakeLists.txt \
-                --replace-fail " -march=native" "" \
-                --replace-fail " -mtune=native" "" \
-                --replace-fail "-Wl,-s" "" \
-                --replace-fail " -s" ""
-            '';
-
             meta = {
               description = "Real-time audio visualizer inspired by MiniMeters";
               homepage = "https://github.com/Audio-Solutions/pulse-visualizer";
