@@ -52,8 +52,7 @@
                 --replace-fail " -march=native" "" \
                 --replace-fail " -mtune=native" "" \
                 --replace-fail "-Wl,-s" "" \
-                --replace-fail " -s" "" \
-                --replace-fail 'set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation prefix" FORCE)' ""
+                --replace-fail " -s" ""
             '';
 
             cmakeFlags = [
