@@ -130,9 +130,6 @@ if(WIN32)
 
   add_compile_definitions(PULSE_DATA_DIR="${CMAKE_INSTALL_PREFIX}/pulse-visualizer")
 else()
-  # Set installation prefix to /usr
-  set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation prefix" FORCE)
-
   # Define data directory for shader loading
   add_compile_definitions(PULSE_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/pulse-visualizer")
 endif()

@@ -3,9 +3,14 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-compat.url = "github:NixOS/flake-compat";
+    gitignore = {
+      url = "github:hercules-ci/gitignore.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
   outputs =
-    inputs@{ flake-parts, self, ... }:
+    inputs@{ flake-parts, gitignore, self, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
         "x86_64-linux"
@@ -19,71 +24,56 @@
           ...
         }:
         let
-          mkPulseVisualizer = pkgs.stdenv.mkDerivation {
-            pname = "pulse-visualizer";
-            version = "1.3.9";
-            src = ./.;
-
-            nativeBuildInputs = [
-              pkgs.cmake
-              pkgs.ninja
-              pkgs.pkg-config
-              pkgs.clang
-            ];
-
-            buildInputs = [
-              pkgs.sdl3
-              pkgs.sdl3-image
-              pkgs.libpulseaudio
-              pkgs.pipewire
-              pkgs.fftwFloat
-              pkgs.freetype
-              pkgs.libGL
-              pkgs.curl
-              pkgs.yaml-cpp
-              pkgs.libebur128
-            ];
-
-            strictDeps = true;
-            enableParallelBuilding = true;
-
-            postPatch = ''
-              substituteInPlace CMakeLists.txt \
-                --replace-fail " -march=native" "" \
-                --replace-fail " -mtune=native" "" \
-                --replace-fail "-Wl,-s" "" \
-                --replace-fail " -s" "" \
-                --replace-fail 'set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation prefix" FORCE)' ""
-            '';
-
-            cmakeFlags = [
-              "-G Ninja"
-              "-DCMAKE_CXX_COMPILER=clang++"
-              "-DCMAKE_C_COMPILER=clang"
-              "-DCMAKE_BUILD_TYPE=Release"
-            ];
-
-            meta = {
-              description = "Real-time audio visualizer inspired by MiniMeters";
-              homepage = "https://github.com/Audio-Solutions/pulse-visualizer";
-              license = lib.licenses.gpl3;
-              maintainers = with lib.maintainers; [ miyu ];
-              platforms = lib.platforms.linux;
-              badPlatforms = lib.platforms.darwin;
-            };
-          };
+          # https://discourse.nixos.org/t/passing-git-commit-hash-and-tag-to-build-with-flakes/11355/2
+          versionRev = if (self ? rev) then (builtins.substring 0 7 self.rev) else "dirty";
+          # TODO: Set version prefix only once somewhere, and read that here
+          # and in ./CMakeLists.txt
+          version = "1.3.9-${versionRev}-flake";
+          inherit (gitignore.lib) gitignoreSource;
         in
         {
-          packages.default = mkPulseVisualizer;
-          packages.pulse-visualizer = mkPulseVisualizer;
+          packages.default = pkgs.callPackage ./package.nix {
+            inherit version;
+            src = lib.cleanSourceWith {
+              # Ignore many files that gitignoreSource doesn't ignore, see:
+              # https://github.com/hercules-ci/gitignore.nix/issues/9#issuecomment-635458762
+              filter = path: type:
+                let
+                  rel = lib.removePrefix (toString ./. + "/") (toString path);
+                in
+                !(builtins.elem rel [
+                  # Nix files
+                  "flake.nix"
+                  "flake.lock"
+                  "default.nix"
+                  "shell.nix"
+                  "package.nix"
+                  # vcpkg Microsoft files
+                  "vcpkg.json"
+                  "vcpkg-configuration.json"
+                  # Git files
+                  ".github"
+                  ".git"
+                  # Other files that shouldn't affect Nix build
+                  "pkg/install.sh"
+                  "pkg/uninstall.sh"
+                  ".clang-format"
+                ]);
+              src = gitignoreSource ./.;
+            };
+          };
+          packages.pulse-visualizer = self'.packages.default;
+          packages.pulse-visualizer-with-clang = self'.packages.default.override {
+            stdenv = pkgs.clangStdenv;
+          };
 
           devShells.default = pkgs.mkShell {
-            inputsFrom = [ mkPulseVisualizer ];
+            inputsFrom = [ self'.packages.default ];
           };
 
           apps.default = {
             type = "app";
-            program = "${self'.packages.default}/bin/pulse-visualizer";
+            program = pkgs.lib.getExe self'.packages.default;
           };
         };
 

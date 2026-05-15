@@ -164,34 +164,36 @@ ninja
 sudo ninja install
 ```
 
-NixOS:
+#### Nix
 
-- If you want to try out the latest version:
+If you want to try out the latest version using Nix, there's a `flake.nix` with which you can use to:
+
+```
+nix run github:Audio-Solutions/pulse-visualizer
+```
+
+Or if you don't have flakes enabled already:
 
 ```bash
 git clone https://github.com/Audio-Solutions/pulse-visualizer
-cd pulse-visualizer/nix
-nix-shell
+nix-build
 ```
 
-- To install download `nix/pulse-visualizer.nix` and add this to your configuration.nix
-
-```nix
-nixpkgs.config.packageOverrides = pkgs: {
-  pulse-visualizer = pkgs.callPackage ./pulse-visualizer.nix { };
-};
-
-environment.systemPackages = [ pkgs.pulse-visualizer ];
-```
-
-- With flakes:
+To install it as a system package in your NixOS flake setup, add to `flake.nix`:
 
 ```nix
 inputs.pulse-visualizer.url = "github:Audio-Solutions/pulse-visualizer";
+```
 
+And then under `outputs`, use:
+
+```nix
 environment.systemPackages = [ pulse-visualizer.packages.${system}.default ];
+```
 
-# or
+Or:
+
+```nix
 nixpkgs.overlays = [ pulse-visualizer.overlays.default ];
 environment.systemPackages = [ pkgs.pulse-visualizer ];
 ```
