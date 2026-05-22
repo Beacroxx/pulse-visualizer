@@ -269,7 +269,7 @@ struct pw_stream* stream;
 struct spa_hook streamListener;
 struct pw_registry* registry;
 struct spa_hook registryListener;
-std::binary_semaphore readSem {0};
+BoolSignal readSig {};
 
 bool initialized = false;
 bool running = false;
@@ -374,7 +374,7 @@ void onProcess(void*) {
 
   pw_stream_queue_buffer(stream, b);
 
-  readSem.release();
+  readSig.set();
 }
 
 std::pair<std::string, uint32_t> find(std::string dev) {
@@ -540,7 +540,7 @@ void init() {
 
 bool read(float*, const size_t&) {
   // Wait for up to 100ms
-  return readSem.try_acquire_for(std::chrono::milliseconds(100));
+  return readSig.wait_for(100ms);
 }
 
 bool reconfigure() {
@@ -591,7 +591,7 @@ UINT32 bufferFrameCount;
 
 bool initialized = false;
 bool running = false;
-std::binary_semaphore readSem {0};
+BoolSignal readSig {};
 
 std::thread wasapiThread;
 
@@ -673,7 +673,7 @@ void threadFunc() {
 
       captureClient->GetNextPacketSize(&packetSize);
 
-      readSem.release();
+      readSig.set();
     }
   }
 }
@@ -696,8 +696,8 @@ void selectDefault(IMMDeviceEnumerator* enumerator, IMMDevice** outDevice) {
     return;
   }
 
-  throw makeErrorAt(std::source_location::current(),
-              "Failed to get default audio endpoint: {}", _com_error(hr).ErrorMessage());
+  throw makeErrorAt(std::source_location::current(), "Failed to get default audio endpoint: {}",
+                    _com_error(hr).ErrorMessage());
 }
 
 void select(const std::string& targetName, IMMDevice** outDevice) {
@@ -945,7 +945,7 @@ void init() {
 
 bool read(float*, const size_t&) {
   // Wait for up to 100ms
-  return readSem.try_acquire_for(std::chrono::milliseconds(100));
+  return readSig.wait_for(100ms);
 }
 
 bool reconfigure() {
@@ -977,7 +977,7 @@ std::vector<std::string> enumerate() {
   if (FAILED(hr)) {
     throw makeErrorAt(std::source_location::current(), "Failed to create device enumerator: {}",
                       _com_error(hr).ErrorMessage());
-    //return {};
+    // return {};
   }
 
   hr = enumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &collection);
@@ -985,7 +985,7 @@ std::vector<std::string> enumerate() {
     enumerator->Release();
     throw makeErrorAt(std::source_location::current(), "Failed to enumerate audio endpoints: {}",
                       _com_error(hr).ErrorMessage());
-    //return {};
+    // return {};
   }
 
   UINT count;

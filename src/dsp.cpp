@@ -618,14 +618,14 @@ bool recreatePlans() {
 namespace Threads {
 
 // Thread synchronization
-std::binary_semaphore fftMainSem {0};
-std::binary_semaphore fftAltSem {0};
+BoolSignal fftMainSig {};
+BoolSignal fftAltSig {};
 
 int FFTMain(std::stop_token stoken) {
-  std::stop_callback cb {stoken, [] { fftMainSem.release(); }};
+  std::stop_callback cb {stoken, [] { fftMainSig.set(); }};
 
   while (true) {
-    fftMainSem.acquire();
+    fftMainSig.wait_for(100ms);
     if (stoken.stop_requested())
       break;
 
@@ -778,10 +778,10 @@ int FFTMain(std::stop_token stoken) {
 }
 
 int FFTAlt(std::stop_token stoken) {
-  std::stop_callback cb {stoken, [] { fftAltSem.release(); }};
+  std::stop_callback cb {stoken, [] { fftAltSig.set(); }};
 
   while (true) {
-    fftAltSem.acquire();
+    fftAltSig.wait_for(100ms);
     if (stoken.stop_requested())
       break;
 
@@ -956,8 +956,8 @@ int mainThread(std::stop_token stoken) {
 #endif
 
     // Signal FFT threads that new data is available
-    fftMainSem.release();
-    fftAltSem.release();
+    fftMainSig.set();
+    fftAltSig.set();
 
     // Process bandpass filter if pitch is detected
     if (pitch > Config::options.fft.limits.min_freq && pitch < Config::options.fft.limits.max_freq)
@@ -981,7 +981,7 @@ int mainThread(std::stop_token stoken) {
     RMS::process();
 
     // Signal main thread that DSP processing is complete
-    mainSem.release();
+    dataRdy.set();
 
     // Wait to start next frame
     static auto lastTime = std::chrono::steady_clock::now();

@@ -33,6 +33,7 @@
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <condition_variable>
 #include <cstdlib>
 #include <deque>
 #include <ebur128.h>
@@ -47,7 +48,6 @@
 #include <numeric>
 #include <optional>
 #include <ranges>
-#include <semaphore>
 #include <signal.h>
 #include <source_location>
 #include <span>
@@ -243,8 +243,37 @@ typedef ptrdiff_t ssize_t;
 #define FLT_EPSILON 1e-6f
 #endif
 
+class BoolSignal {
+public:
+  void set() {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      flag_ = true;
+    }
+    cv_.notify_one();
+  }
+
+  bool wait_for(std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!cv_.wait_for(lock, timeout, [this] { return flag_; }))
+      return false;
+    flag_ = false;
+    return true;
+  }
+
+  void wait() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return flag_; });
+    flag_ = false;
+  }
+
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  bool flag_ = false;
+};
+
 // Thread synchronization variables for DSP data processing
-extern std::binary_semaphore mainSem;
+extern BoolSignal dataRdy;
 
 /**
  * @brief Expands a path starting with '~' to the user's home directory

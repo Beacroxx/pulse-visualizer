@@ -113,7 +113,7 @@ void reconfigure() {
 }
 
 // Thread synchronization
-std::binary_semaphore mainSem {0};
+BoolSignal dataRdy {};
 
 int main(int argc, char** argv) {
   for (int i = 0; i < argc; i++) {
@@ -311,7 +311,7 @@ int main(int argc, char** argv) {
       WindowManager::updateBounds();
 
       // Wait for DSP data to be ready
-      mainSem.try_acquire_for(100ms);
+      dataRdy.wait_for(100ms);
 
       // Render frame
       SDLWindow::clear();
@@ -344,6 +344,7 @@ int main(int argc, char** argv) {
 
   // Cleanup
   logDebug("Cleaning up...");
+  DSPThread.request_stop();
   WindowManager::cleanup();
   Graphics::Font::cleanup();
   AudioEngine::cleanup();
@@ -351,6 +352,8 @@ int main(int argc, char** argv) {
   Config::cleanup();
   Theme::cleanup();
   SDLWindow::deinit();
+  if (DSPThread.joinable())
+    DSPThread.join();
   VisualizerRegistry::cleanup();
   Plugin::unloadAll();
 
