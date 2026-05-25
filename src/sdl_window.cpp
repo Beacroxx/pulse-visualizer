@@ -237,11 +237,17 @@ void createWindow(const std::string& group, const std::string& title, int width,
   }
 
   // Create OpenGL context
-  logDebug("Creating OpenGL context");
-  SDL_GLContext glContext = SDL_GL_CreateContext(win);
-  if (!glContext) {
-    SDL_DestroyWindow(win);
-    throw makeErrorAt(std::source_location::current(), "Failed to create OpenGL Context: {}", SDL_GetError());
+  SDL_GLContext glContext;
+  if (states.empty()) {
+    logDebug("Creating OpenGL context");
+    glContext = SDL_GL_CreateContext(win);
+    if (!glContext) {
+      SDL_DestroyWindow(win);
+      throw makeErrorAt(std::source_location::current(), "Failed to create OpenGL Context: {}", SDL_GetError());
+    }
+  } else {
+    logDebug("Using shared OpenGL context");
+    glContext = states["main"].glContext;
   }
 
   // Fix nvidia bug
@@ -265,7 +271,8 @@ bool destroyWindow(const std::string& group) {
 
   logDebug("Destroying window: {}", group);
   SDL_DestroyWindow(states[group].win);
-  SDL_GL_DestroyContext(states[group].glContext);
+  if (group == "main")
+    SDL_GL_DestroyContext(states[group].glContext);
   states.erase(group);
   selectWindow("main");
   return true;
